@@ -1,0 +1,134 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+url = 'https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv'
+data = pd.read_csv(url)
+
+data.dropna(subset=['total_cases', 'total_deaths'], inplace=True)
+data['date'] = pd.to_datetime(data['date'])
+country_data = data[data['location'] == 'United States']
+#1
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=country_data, x='date', y='new_cases', color='blue')
+plt.title('Daily New COVID-19 Cases in  US Over Time')
+plt.xlabel('Date')
+plt.ylabel('New Cases')
+plt.xticks(rotation=45)
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#2
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=country_data, x='date', y='new_deaths', color='red')
+plt.title('Daily New COVID-19 Deaths in US Over Time')
+plt.xlabel('Date')
+plt.ylabel('New Deaths')
+plt.xticks(rotation=45)
+plt.grid()
+plt.tight_layout()
+plt.show()
+#3
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=country_data, x='date', y='total_cases', label='Total Cases', color='blue')
+sns.lineplot(data=country_data, x='date', y='total_deaths', label='Total Deaths', color='red')
+plt.title('Total COVID-19 Cases and Deaths in the United States Over Time')
+plt.xlabel('Date')
+plt.ylabel('Count')
+plt.xticks(rotation=45)
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
+#4
+country_data['case_fatality_rate'] = country_data['total_deaths'] / country_data['total_cases'] * 100
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=country_data, x='date', y='case_fatality_rate', color='purple')
+plt.title('COVID-19 Case Fatality Rate in the United States Over Time')
+plt.xlabel('Date')
+plt.ylabel('Case Fatality Rate (%)')
+plt.xticks(rotation=45)
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#5
+latest_data = data[data['date'] == data['date'].max()]
+top_states = latest_data.nlargest(10, 'total_cases')
+
+plt.figure(figsize=(12, 6))
+sns.barplot(x='total_cases', y='location', data=top_states, palette='viridis')
+plt.title('Top 10 States by Total COVID-19 Cases (Latest Data)')
+plt.xlabel('Total Cases')
+plt.ylabel('State')
+plt.tight_layout()
+plt.show()
+
+
+vaccination_data = data[data['location'] == 'United States']
+vaccination_data['vaccination_percentage'] = vaccination_data['people_vaccinated'] / vaccination_data['population'] * 100
+
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=vaccination_data, x='date', y='vaccination_percentage', color='green')
+plt.title('Percentage of Population Vaccinated in the United States Over Time')
+plt.xlabel('Date')
+plt.ylabel('Vaccination Percentage (%)')
+plt.xticks(rotation=45)
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#7
+correlation_matrix = country_data[['new_cases', 'new_deaths', 'total_cases', 'total_deaths']].corr()
+plt.figure(figsize=(8, 6))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Heatmap of COVID-19 Metrics in the United States')
+plt.tight_layout()
+plt.show()
+
+#8
+vaccination_data = vaccination_data[['date', 'people_vaccinated']]
+vaccination_data.set_index('date', inplace=True)
+combined_data = country_data.set_index('date')[['new_cases']]
+combined_data = combined_data.join(vaccination_data)
+
+combined_data.plot(figsize=(12, 6), secondary_y='people_vaccinated', marker='o')
+plt.title('Daily New COVID-19 Cases and Vaccinations in the United States Over Time')
+plt.xlabel('Date')
+combined_data[['new_cases']].plot(legend=True)
+combined_data[['people_vaccinated']].plot(legend=True, secondary_y=True)
+plt.grid()
+plt.tight_layout()
+plt.show()
+
+#9
+latest_population = latest_data[['location', 'population']]
+latest_population.set_index('location', inplace=True)
+
+latest_population['cases_per_million'] = latest_population['population'].apply(lambda x: top_states.loc[top_states['location'] == x, 'total_cases'].values[0] / x * 1_000_000)
+
+top_states_with_population = top_states.join(latest_population[['cases_per_million']], on='location')
+
+plt.figure(figsize=(12, 6))
+sns.barplot(x='cases_per_million', y=top_states_with_population.index, data=top_states_with_population)
+plt.title('COVID-19 Cases per Million People by State (Latest Data)')
+plt.xlabel('Cases per Million People')
+plt.ylabel('State')
+plt.tight_layout()
+plt.show()
+
+#10
+top_death_states = latest_data.nlargest(10, 'total_deaths')
+
+plt.figure(figsize=(12, 6))
+sns.barplot(x='total_deaths', y='location', data=top_death_states, palette='magma')
+plt.title('Top 10 States by Total COVID-19 Deaths (Latest Data)')
+plt.xlabel('Total Deaths')
+plt.ylabel('State')
+plt.tight_layout()
+plt.show()
+
+cleaned_file_path = 'cleaned_covid_data.csv'
+data.to_csv(cleaned_file_path, index=False)
+print(f"Cleaned data saved to {cleaned_file_path}")
